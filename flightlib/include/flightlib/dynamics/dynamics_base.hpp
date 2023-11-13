@@ -1,6 +1,9 @@
 #pragma once
 
 #include "flightlib/common/types.hpp"
+#include <opencv2/highgui/highgui.hpp>
+#include <zmqpp/zmqpp.hpp>
+
 
 namespace flightlib {
 

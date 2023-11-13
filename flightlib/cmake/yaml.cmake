@@ -27,7 +27,7 @@ message(STATUS "Yaml downloaded!")
 add_subdirectory(${PROJECT_SOURCE_DIR}/externals/yaml-src
                  ${PROJECT_SOURCE_DIR}/externals/yaml-build
                  EXCLUDE_FROM_ALL)
-target_compile_options(yaml-cpp PUBLIC -fPIC -w)
+target_compile_options(yaml-cpp PUBLIC -fPIC -w -mcpu=apple-m1)
 
 include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/externals/yaml-src/include")
 link_directories("${PROJECT_SOURCE_DIR}/externals/yaml-build")

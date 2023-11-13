@@ -56,6 +56,7 @@ class CMakeBuild(build_ext):
                 raise RuntimeError("CMake >= 3.1.0 is required on Windows")
 
         for ext in self.extensions:
+            print("building ext: ", ext)
             self.build_extension(ext)
 
     def build_extension(self, ext):
@@ -100,7 +101,7 @@ setup(
     long_description='',
     ext_modules=[CMakeExtension('flightlib')],
     install_requires=['gym==0.11', 'ruamel.yaml',
-                      'numpy', 'stable_baselines==2.10.1'],
+                      'numpy'],
     cmdclass=dict(build_ext=CMakeBuild),
     include_package_data=True,
     zip_safe=False,

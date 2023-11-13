@@ -25,7 +25,7 @@ set(
 
 message(STATUS "======> Setup Dependencies")
 if(EIGEN_FROM_SYSTTEM)
-  find_package(Eigen3 3.3.4 QUIET)
+  #find_package(Eigen3 3.3.4 QUIET)
   if(EIGEN3_FOUND)
     message(STATUS "Using system provided Eigen.")
     message(${EIGEN3_INCLUDE_DIR})
@@ -50,6 +50,7 @@ include(cmake/yaml.cmake)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 find_package(OpenMP REQUIRED)
+#find_package(zmqpp REQUIRED)
 
 if(ENABLE_BLAS)
   set(BLA_VENDOR "Generic")
@@ -95,9 +96,28 @@ if (NOT EXISTS ${CMAKE_BINARY_DIR}/CMakeCache.txt)
 endif()
 
 # Add c++ flags 
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -fPIC -Wall -DNDEBUG  -fopenmp")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -fPIC -Wall -g -fopenmp")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -fPIC -Wall -DNDEBUG  -fopenmp -std=c++17")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -fPIC -Wall -g -fopenmp -std=c++17")
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Workaround for OSX Clang
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    set(OpenMP_C "${CMAKE_C_COMPILER}")
+    set(OpenMP_C_FLAGS "-fopenmp=libomp -Wno-unused-command-line-argument")
+    set(OpenMP_C_LIB_NAMES "libomp" "libgomp" "libiomp5")
+    set(OpenMP_libomp_LIBRARY ${OpenMP_C_LIB_NAMES})
+    set(OpenMP_libgomp_LIBRARY ${OpenMP_C_LIB_NAMES})
+    set(OpenMP_libiomp5_LIBRARY ${OpenMP_C_LIB_NAMES})
+endif()
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set(OpenMP_CXX "${CMAKE_CXX_COMPILER}")
+  set(OpenMP_CXX_FLAGS "-fopenmp=libomp -Wno-unused-command-line-argument")
+  set(OpenMP_CXX_LIB_NAMES "libomp" "libgomp" "libiomp5")
+  set(OpenMP_libomp_LIBRARY ${OpenMP_CXX_LIB_NAMES})
+  set(OpenMP_libgomp_LIBRARY ${OpenMP_CXX_LIB_NAMES})
+  set(OpenMP_libiomp5_LIBRARY ${OpenMP_CXX_LIB_NAMES})
+endif()
 
 # Architectural flags
 if("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "armv7l")
@@ -107,7 +127,7 @@ elseif("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
   message(STATUS "Using ARM aarch64 optimized flags!")
   set(CMAKE_CXX_ARCH_FLAGS " -Wno-psabi -march=armv8-a+crypto -mcpu=cortex-a57+crypto")
 else()
-  set(CMAKE_CXX_ARCH_FLAGS " -march=native")
+  set(CMAKE_CXX_ARCH_FLAGS " -mcpu=apple-m1")
 endif()
 
 # Optimized flags
@@ -196,6 +216,8 @@ endif()
 # Library and Executables
 include_directories(include)
 
+set(zmqpp_INCLUDE_DIR "/opt/homebrew/opt/zmqpp/include")
+set(zmqpp_LIBRARY_DIR "/opt/homebrew/opt/zmqpp/lib/*.dylib")
 if(NOT FLIGHTLIB_SOURCES)
 	set(LIBRARY_NAME)
 else()
@@ -206,7 +228,8 @@ else()
     yaml-cpp
     zmq
     zmqpp
-    stdc++fs)
+    ${zmqpp_LIBRARY_DIR}
+    c++experimental)
   set(LIBRARY_NAME ${PROJECT_NAME})
   set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 endif()
@@ -220,15 +243,17 @@ if(FLIGHTLIB_GYM_SOURCES)
       # ${PROJECT_SOURCE_DIR}/externals/pybind11-src/include
       ${PYBIND11_INCLUDE_DIR}
       ${PROJECT_SOURCE_DIR}/include
-      ${EIGEN3_INCLUDE_DIR})  
+      ${EIGEN3_INCLUDE_DIR}
+      ${zmqpp_INCLUDE_DIR})  
   else()
     target_include_directories(flightgym PRIVATE
       # ${PROJECT_SOURCE_DIR}/externals/pybind11-src/include
       ${PYBIND11_INCLUDE_DIR}
       ${PROJECT_SOURCE_DIR}/externals/eigen/eigen3 #pybind11 use #include <Eigen/Core>, however, flightmare use #include <eigen3/Eigen/Core>
-      ${PROJECT_SOURCE_DIR}/include)  
+      ${PROJECT_SOURCE_DIR}/include
+      ${zmqpp_INCLUDE_DIR})  
   endif()
-  target_link_libraries(flightgym PRIVATE ${LIBRARY_NAME} )
+  target_link_libraries(flightgym PRIVATE ${LIBRARY_NAME} c++experimental ${zmqpp_LIBRARY_DIR})
 endif()
 
 if(ENABLE_BLAS AND BLAS_FOUND AND LAPACK_FOUND)
@@ -237,6 +262,8 @@ if(ENABLE_BLAS AND BLAS_FOUND AND LAPACK_FOUND)
     ${BLAS_LIBRARIES}
     ${LAPACK_LIBRARIES}
     ${LAPACKE_LIBRARIES}
+    ${zmqpp_LIBRARY_DIR}
+    c++experimental
   )
 endif()
 
@@ -246,7 +273,9 @@ if(BUILD_TESTS AND FLIGHTLIB_GYM_TEST_SOURCES)
   target_link_libraries(test_gym
     ${LIBRARY_NAME}
     gtest
-    gtest_main)
+    gtest_main
+    ${zmqpp_LIBRARY_DIR}
+    c++experimental)
 add_test(test_gym test_gym)
 endif()
 
@@ -256,18 +285,24 @@ if(BUILD_TESTS AND FLIGHTLIB_TEST_SOURCES)
   target_link_libraries(test_lib PUBLIC
     ${LIBRARY_NAME}
     gtest
-    gtest_main)
+    gtest_main
+    ${zmqpp_LIBRARY_DIR}
+    c++experimental)
 add_test(test_lib test_lib)
 endif()
 
 # Build tests for flightlib unity bridge
 if(BUILD_UNITY_BRIDGE_TESTS AND FLIGHTLIB_UNITY_BRIDGE_TEST_SOURCES)
   add_executable(test_unity_bridge ${FLIGHTLIB_UNITY_BRIDGE_TEST_SOURCES})
+  message("linking c++experimental for unity bridge tests")
+  add_test(test_unity_bridge test_unity_bridge)
   target_link_libraries(test_unity_bridge PUBLIC
     ${LIBRARY_NAME}
     gtest
-    gtest_main)
-add_test(test_unity_bridge test_unity_bridge)
+    gtest_main
+    ${zmqpp_LIBRARY_DIR}
+    c++experimental
+  )
 endif()
 
 message(STATUS "================  !Done. No more nightmare!  ================")

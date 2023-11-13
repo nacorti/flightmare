@@ -1,5 +1,29 @@
 # Flightmare - 左青龙
 
+Notes on getting this working for M1 OSX:
+
+running with
+
+which clang
+/usr/bin/clang
+clang -v
+Apple clang version 14.0.0 (clang-1400.0.29.202)
+Target: arm64-apple-darwin23.0.0
+Thread model: posix
+InstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
+
+clang++ should be the same
+
+make sure you run `brew install libomp`
+
+Then export the below:
+export CC=/usr/bin/clang
+export CXX=/usr/bin/clang++
+export CPPFLAGS=" -Xpreprocessor -fopenmp"
+export CFLAGS="$CFLAGS -I/opt/homebrew/opt/libomp/include"
+export CXXFLAGS="$CXXFLAGS -I/opt/homebrew/opt/libomp/include"
+export LDFLAGS="$LDFLAGS -Wl,-rpath,/opt/homebrew/opt/libomp/lib -L/opt/homebrew/opt/libomp/lib -lomp"
+
 ![Build Status](https://github.com/uzh-rpg/flightmare/workflows/CPP_CI/badge.svg) ![clang format](https://github.com/uzh-rpg/flightmare/workflows/clang_format/badge.svg)
 ![License](https://img.shields.io/badge/License-MIT-blue.svg) ![website]( https://img.shields.io/website-up-down-green-red/https/naereen.github.io.svg)
 
